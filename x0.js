@@ -1,122 +1,176 @@
-window.addEventListener('load', function () {
-    window.game = {
-        finishGame: false,
-        cells: 3,
-        players: {
-            zero: {
-                value: 0,
-                symbol: '0',
-            },
-            crosse: {
-                value: 1,
-                symbol: 'X',
-            }
-        },
-        activePlayer: null,
-        result: [
-            [null, null, null],
-            [null, null, null],
-            [null, null, null]
-        ],
-        init: function() {
-            this.activePlayer = this.players.crosse;
-            this.createGameSpace();
-            document.querySelector('.status').innerHTML = 'Ходит игрок: ' + this.activePlayer.symbol;
-        },
-        createGameSpace: function() {
-            let gamespace = '';
-            for(let i = 0; i < this.cells; i++) {
-                gamespace += this.createRow(i);
-            }
-            document.querySelector('.gamespace').innerHTML = gamespace;
-        },
-        createRow: function(i) {
-            let row = document.createElement('div');
-            row.classList.add('row');
-            for(let j =0; j < this.cells; j++) {
-                let col = document.createElement('div');
-                col.classList.add('col');
-                col.insertAdjacentHTML('beforeend', this.createItem(i, j));
-                row.insertAdjacentHTML('beforeend', col.outerHTML);
-            }
+// Инициализация Telegram WebApp
+function initTelegramWebApp() {
+    if (window.Telegram && Telegram.WebApp) {
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        return true;
+    }
+    return false;
+}
 
-            return row.outerHTML;
-        },
-        createItem: function(i, j) {
-            let item = document.createElement('div');
-            item.classList.add('item');
-            item.dataset.row = i;
-            item.dataset.col = j;
+// Класс игры с ИИ
+class TicTacToeAI {
+    constructor() {
+        this.board = Array(9).fill(null);
+        this.humanPlayer = 'X';
+        this.aiPlayer = 'O';
+        this.currentPlayer = this.humanPlayer;
+        this.gameEnded = false;
 
-            return item.outerHTML;
-        },
-        switchPlayer: function() {
-            this.activePlayer = this.activePlayer === this.players.zero ? this.players.crosse : this.players.zero;
-        },
-        finish: function() {
-            this.finishGame = true;
-        },
-        checkWin: function() {
-            let isWin = false;
-            loop: for (let i = 0; i < this.result.length; i++) {
-                for(let j =0; j < this.result[i].length; j++) {
-                    if(this.winRow(i,j) || this.winCol(i,j)) {
-                        isWin = true;
-                        break loop;
-                    }
-                }
-            }
-            return isWin || this.winDia();
-        },
-        winRow: function(row,col) {
-            return null !== this.result[row][col] && this.result[row][col] === this.result[row][col+1] && this.result[row][col] === this.result[row][col+2];
-        },
-        winCol: function(row,col) {
-            return null !== this.result[row][col] && this.result[row][col] === this.result[row+1][col] && this.result[row][col] === this.result[row+2][col];
-        },
-        winDia: function() {
-            return this.winDia1() || this.winDia2();
-        },
-        winDia1: function() {
-            return this.result[0][0] === this.result[1][1] && this.result[0][0]  === this.result[2][2] && null !== this.result[0][0]
-        },
-        winDia2: function() {
-            return this.result[0][2] === this.result[1][1] && this.result[0][2] === this.result[2][0] && null !== this.result[0][2];
-        },
-        showWinLine: function(isWin) {
-            if (this.finishGame) {
-                window.game.switchPlayer();
-                document.querySelector('.status').innerHTML = 'Победил: ' + this.activePlayer.symbol;
-            } else {
-                document.querySelector('.status').innerHTML = this.isStandoff() ? 'Ничья!' : 'Ходит игрок: ' + this.activePlayer.symbol;
-            }
-        },
-        isStandoff: function() {
-            let standoff = true;
-            for(let i = 0; i < this.result.length; i++) {
-                for(let j = 0; j < this.result[i].length; j++) {
-                    if (null === this.result[i][j]) {
-                        standoff = false;
-                    }
-                }
-            }
-            return standoff;
+        this.statusElement = document.querySelector('.status');
+        this.boardElement = document.querySelector('.gamespace');
+        this.restartButton = document.getElementById('restart-btn');
+
+        this.init();
+    }
+
+    init() {
+        this.renderBoard();
+        this.restartButton.addEventListener('click', () => this.restartGame());
+
+        // Если играем в Telegram, добавляем кнопку "Поделиться"
+        if (window.Telegram && Telegram.WebApp) {
+            const shareBtn = document.createElement('button');
+            shareBtn.id = 'share-btn';
+            shareBtn.textContent = 'Поделиться результатом';
+            shareBtn.style.marginLeft = '10px';
+            shareBtn.addEventListener('click', () => this.shareResult());
+            this.restartButton.after(shareBtn);
         }
     }
-    window.game.init();
-    document.querySelectorAll('.item').forEach(function (e) {
-        e.addEventListener('click', function () {
-            if ('' === e.innerText && !window.game.finishGame) {
-                e.innerText = window.game.activePlayer.symbol;
-                window.game.result[parseInt(e.dataset.row)][parseInt(e.dataset.col)] = window.game.activePlayer.value;
-                window.game.switchPlayer();
-                window.game.showWinLine();
-                let finishGame = window.game.checkWin();
-                if (finishGame) {
-                    window.game.finish();
-                    window.game.showWinLine();
-                }
+
+    renderBoard() {
+        this.boardElement.innerHTML = '';
+
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.className = `item ${this.board[i] ? this.board[i].toLowerCase() : ''}`;
+            cell.textContent = this.board[i] || '';
+            cell.addEventListener('click', () => this.handleCellClick(i));
+            this.boardElement.appendChild(cell);
+        }
+    }
+
+    handleCellClick(index) {
+        if (this.gameEnded || this.currentPlayer !== this.humanPlayer || this.board[index]) return;
+
+        this.makeMove(index, this.humanPlayer);
+
+        if (!this.gameEnded) {
+            setTimeout(() => this.aiMove(), 500); // Задержка для "раздумий" ИИ
+        }
+    }
+
+    makeMove(index, player) {
+        this.board[index] = player;
+        this.renderBoard();
+
+        if (this.checkWin(player)) {
+            this.gameEnded = true;
+            const winner = player === this.humanPlayer ? 'Вы победили! 🎉' : 'Компьютер победил! 🤖';
+            this.statusElement.textContent = winner;
+            return;
+        }
+
+        if (this.isBoardFull()) {
+            this.gameEnded = true;
+            this.statusElement.textContent = 'Ничья! 🤝';
+            return;
+        }
+
+        this.currentPlayer = player === this.humanPlayer ? this.aiPlayer : this.humanPlayer;
+        this.statusElement.textContent = this.currentPlayer === this.humanPlayer ? 'Ваш ход (X)' : 'Компьютер думает...';
+    }
+
+    aiMove() {
+        if (this.gameEnded || this.currentPlayer !== this.aiPlayer) return;
+
+        // Простой ИИ:
+        // 1. Сначала пытается выиграть
+        // 2. Потом блокирует игрока
+        // 3. Иначе случайный ход
+
+        let move = this.findWinningMove(this.aiPlayer) ||
+            this.findWinningMove(this.humanPlayer) ||
+            this.findRandomMove();
+
+        this.makeMove(move, this.aiPlayer);
+    }
+
+    findWinningMove(player) {
+        // Проверяем все возможные ходы
+        for (let i = 0; i < 9; i++) {
+            if (!this.board[i]) {
+                this.board[i] = player;
+                const isWin = this.checkWin(player);
+                this.board[i] = null;
+
+                if (isWin) return i;
             }
+        }
+        return null;
+    }
+
+    findRandomMove() {
+        const availableMoves = [];
+        for (let i = 0; i < 9; i++) {
+            if (!this.board[i]) availableMoves.push(i);
+        }
+        return availableMoves.length > 0 ?
+            availableMoves[Math.floor(Math.random() * availableMoves.length)] : null;
+    }
+
+    checkWin(player) {
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+            [0, 4, 8], [2, 4, 6]             // diagonals
+        ];
+
+        return winPatterns.some(pattern => {
+            return pattern.every(index => {
+                return this.board[index] === player;
+            });
         });
-    });
+    }
+
+    isBoardFull() {
+        return this.board.every(cell => cell !== null);
+    }
+
+    restartGame() {
+        this.board = Array(9).fill(null);
+        this.currentPlayer = this.humanPlayer;
+        this.gameEnded = false;
+        this.statusElement.textContent = 'Ваш ход (X)';
+        this.renderBoard();
+    }
+
+    shareResult() {
+        if (window.Telegram && Telegram.WebApp) {
+            const result = this.gameEnded ?
+                `Я сыграл в крестики-нолики: ${this.statusElement.textContent}` :
+                'Я играю в крестики-нолики!';
+
+            Telegram.WebApp.sendData(JSON.stringify({
+                action: "share_result",
+                game: "tic_tac_toe",
+                result: result
+            }));
+        }
+    }
+}
+
+// Инициализация игры
+document.addEventListener('DOMContentLoaded', () => {
+    const isTelegram = initTelegramWebApp();
+    window.game = new TicTacToeAI();
+
+    if (!isTelegram) {
+        document.body.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h2>Пожалуйста, откройте игру через Telegram бота</h2>
+                    </div>
+                `;
+    }
 });

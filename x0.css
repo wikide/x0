@@ -1,37 +1,48 @@
-.gamespace .row * {
-    box-sizing: border-box;
-}
-.gamespace .row {
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
+    height: 100vh;
     display: flex;
-    flex-wrap: wrap;
-}
-.gamespace .col {
-    width: 33%;
-    position: relative;
-    overflow: hidden;
-    border: 3px solid #000;
-}
-.gamespace .col:after {
-    content: "";
-    padding-top: 100%;
-    float: left;
-}
-.gamespace .item {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-flow: column;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    color: #000;
-    font-size: 8em;
-}
-.gamespace {
-    width: 30%;
-    margin: 0 auto;
 }
 .status {
+    font-size: 1.5rem;
+    margin: 20px 0;
     text-align: center;
-    font-size: 2em;
+}
+.gamespace {
+    display: grid;
+    grid-template-columns: repeat(3, 80px);
+    grid-template-rows: repeat(3, 80px);
+    gap: 5px;
+    margin-bottom: 20px;
+}
+.item {
+    width: 80px;
+    height: 80px;
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 8px;
+    user-select: none;
+}
+.item.x { color: #3390ec; }
+.item.o { color: #ec3333; }
+button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: var(--tg-theme-button-color, #3390ec);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
 }
